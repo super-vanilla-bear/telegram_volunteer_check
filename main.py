@@ -44,13 +44,13 @@ def process_channel_names():
 async def write_to_file(row_data, file_name):
     data_file = Path(f'{file_name}.csv')
     if not data_file.is_file():
-        with open('data.csv', 'w', newline='') as file:
+        with data_file.open('w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["text", "hash_tags", "phones", 'credit_cards'])
-    else:
-        with open('data.csv', 'a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(row_data)
+            writer.writerow(['sender', 'message'])
+
+    with data_file.open('a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(row_data)
 
 
 client = TelegramClient('new_session', *get_creds())
@@ -67,15 +67,20 @@ async def write_new_message_handler(event):
 
         message = event.text
         sender = await event.get_sender()
-        sender_name = (
-            f'{sender.username}: '
-            f'{sender.first_name or ""} {sender.last_name or ""}'.strip()
-        )
+        try:
+            # sent by a person
+            sender_name = (
+                f'{sender.username}: '
+                f'{sender.first_name or ""} {sender.last_name or ""}'.strip()
+            )
+        except AttributeError:
+            # sent by a channel (admin)
+            sender_name = sender.username
 
-        data_to_write = [sender, message]
+        data_to_write = [sender_name, message]
         logger.info(data_to_write)
 
-        await write_to_file(data_to_write, sender_name)
+        await write_to_file(data_to_write, event.chat.username)
     except TypeError:
         logger.error(f'Something went wrong with the message: {event.text}')
 
